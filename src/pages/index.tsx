@@ -1,15 +1,12 @@
 import Link from 'next/link';
+import { useState } from 'react';
 import { trpc } from '../utils/trpc';
 import { NextPageWithLayout } from './_app';
 
 const IndexPage: NextPageWithLayout = () => {
-  const utils = trpc.useContext();
-  const postsQuery = trpc.useQuery(['post.all']);
-  const addPost = trpc.useMutation('post.add', {
-    async onSuccess() {
-      // refetches posts after a post is added
-      await utils.invalidateQueries(['post.all']);
-    },
+  const [name, setName] = useState('');
+  const postsQuery = trpc.useQuery(['post.byName', { name }], {
+    enabled: !!name,
   });
 
   // prefetch all posts for instant navigation
@@ -29,17 +26,15 @@ const IndexPage: NextPageWithLayout = () => {
       </p>
 
       <h2>
-        Posts
         {postsQuery.status === 'loading' && '(loading)'}
+        {postsQuery.data && (
+          <div>
+            Your name is: {postsQuery.data.name}
+            <br />
+            Date time: {postsQuery.data.at}
+          </div>
+        )}
       </h2>
-      {postsQuery.data?.map((item) => (
-        <article key={item.id}>
-          <h3>{item.title}</h3>
-          <Link href={`/post/${item.id}`}>
-            <a>View more</a>
-          </Link>
-        </article>
-      ))}
 
       <hr />
 
@@ -52,37 +47,23 @@ const IndexPage: NextPageWithLayout = () => {
            * @link https://react-hook-form.com/
            */
 
-          const $text: HTMLInputElement = (e as any).target.elements.text;
-          const $title: HTMLInputElement = (e as any).target.elements.title;
-          const input = {
-            title: $title.value,
-            text: $text.value,
-          };
-          try {
-            await addPost.mutateAsync(input);
+          const $text: HTMLInputElement = (e as any).target.elements.name;
 
-            $title.value = '';
-            $text.value = '';
-          } catch {}
+          setName($text.value);
         }}
       >
-        <label htmlFor="title">Title:</label>
+        <label htmlFor="text">Enter name:</label>
         <br />
         <input
-          id="title"
-          name="title"
+          id="name"
+          name="name"
           type="text"
-          disabled={addPost.isLoading}
+          disabled={postsQuery.isLoading}
         />
 
         <br />
-        <label htmlFor="text">Text:</label>
-        <br />
-        <textarea id="text" name="text" disabled={addPost.isLoading} />
-        <br />
-        <input type="submit" disabled={addPost.isLoading} />
-        {addPost.error && (
-          <p style={{ color: 'red' }}>{addPost.error.message}</p>
+        {postsQuery.error && (
+          <p style={{ color: 'red' }}>{postsQuery.error.message}</p>
         )}
       </form>
     </>
